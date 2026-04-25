@@ -1,10 +1,116 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Librarian</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Librarian</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Librarian</h1>
-    <h3>This is a work-in-progress application for SE 4283 Software Engineering 1</h3>
+
+  <!-- ══════════════════════════ Top Bar ══════════════════════════ -->
+  <header id="topbar">
+    <img id="image-logo" src="resources/logo-librarian.svg" alt="Librarian Logo">
+    <span id="topbar-rule"></span>
+    <span id="topbar-badge">Research Assistant</span>
+  </header>
+
+  <div id="app-wrapper">
+
+    <!-- ══════════════════════════ Setup Page ══════════════════════════ -->
+    <div class="page-container" id="page-setup">
+      <div class="card">
+        <h2 class="card-title">Setup</h2>
+        <span class="card-subtitle">Setup your research session below!</span>
+        
+        <hr class="card-divider">
+
+        <!-- 1: CSV Upload -->
+        <div class="step">
+          <div class="step-label">
+            <div class="step-number">1</div>
+            <span class="step-text">Upload your conference papers CSV</span>
+          </div>
+
+          <div class="upload-zone">
+            <input type="file" id="input-csv-file" accept=".csv" />
+            <span class="upload-icon">📄</span>
+            <span class="upload-hint">Click or drag a .csv file here</span>
+          </div>
+
+          <div id="text-upload-filename"></div>
+        </div>
+
+        <!-- 2: API Key -->
+        <div class="step">
+          <div class="step-label">
+            <div class="step-number">2</div>
+            <span class="step-text">Enter your API key</span>
+          </div>
+
+          <input
+          type="password"
+          id="input-api-key"
+          class="field-input"
+          placeholder="insert api key for ai here..."
+          autocomplete="off"
+          spellcheck="false"
+          />
+        </div>
+
+        <hr class="card-divider">
+
+        <!-- 3: Setup -->
+        <button id="button-setup" class="btn-primary">Setup!</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════ Application State / Progress ══════════════════════════ -->
+    <div id="container-application-state">
+      <div class="state-panel">
+        <img id="image-application-state" src="resources/state-setup.svg" style="width:25%" alt="">
+        <div id="text-application-state">Application State...</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════ Main Page ══════════════════════════ -->
+    <div class="page-container" id="page-main">
+      <div class="card">
+        <h2 class="card-title">Search the Archive</h2>
+        <p class="card-subtitle">Describe a topic, method, problem, author, or year in plain English.</p>
+      
+        <div class="search-prompt-wrapper">
+          <textarea
+            id="input-search"
+            rows="2"
+            placeholder="Enter prompt..."
+            class="field-input"
+          ></textarea>
+        </div>
+
+        <hr class="card-divider">
+        
+        <button id="button-search" class="btn-primary">Search</button>
+      </div>
+
+      <!-- Results -->
+      <div class="card" id="container-results">
+        <div id="text-results">No results...</div>
+
+        <!-- Result Element Template -->
+        <div class="result-card" id="container-result-element-template">
+          <a class="result-title" id="text-result-element-title-template">Title: Sample Title</a>
+          <a id="text-result-element-author-template">Author: John Doe</a>
+          <a id="text-result-element-year-template">Year: 1999</a>
+          <a id="text-result-element-url-template" href="google.com">google.com</a>
+          <a id="text-result-element-abstract-template">Abstract: This is an abstract paper description!</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
 </body>
 </html>
