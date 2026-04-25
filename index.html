@@ -32,7 +32,7 @@
         <div class="step">
           <div class="step-label">
             <div class="step-number">1</div>
-            <span class="step-text">Upload your conference papers CSV</span>
+            <span class="step-text">Upload your conference papers CSV file</span>
           </div>
 
           <div class="upload-zone">
@@ -55,7 +55,7 @@
           type="password"
           id="input-api-key"
           class="field-input"
-          placeholder="insert api key for ai here..."
+          placeholder="Insert API key for LLM here..."
           autocomplete="off"
           spellcheck="false"
           />
@@ -70,7 +70,7 @@
 
     <!-- ══════════════════════════ Application State / Progress ══════════════════════════ -->
     <div id="container-application-state">
-      <div class="state-panel">
+      <div id="container-application-state-panel" class="state-panel">
         <img id="image-application-state" src="resources/state-setup.svg" style="width:25%" alt="">
         <div id="text-application-state">Application State...</div>
       </div>
@@ -93,7 +93,7 @@
 
         <hr class="card-divider">
         
-        <button id="button-search" class="btn-primary">Search</button>
+        <button id="button-search" class="btn-primary">Search!</button>
       </div>
 
       <!-- Results -->
