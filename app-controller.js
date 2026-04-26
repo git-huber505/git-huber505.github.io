@@ -109,17 +109,48 @@ async function Controller_OnSearchClicked()
         //then filter and rank papers locally
         const matchCount = Model_FilterPaperSearch(initialResult);
 
-        View_SetResultsText(
-        `We found ${matchCount} best results that match your query. ` +
-        `If you wait a bit we will check these articles and order them by relevancy...`
-        );
-
         //render preliminary results
-        const preliminaryPapers = Model_GetBestPaperRankings().map(r => Model_GetPaperByIndex(r.originalPaperIndex));
+        let bestPaperRankings = Model_GetBestPaperRankings();
+        const preliminaryPapers = bestPaperRankings.map(r => Model_GetPaperByIndex(r.originalPaperIndex));
         View_RenderResultCards(preliminaryPapers);
 
-        //ask LLM to re-rank top results by relevancy
-        await Controller_RefinePaperSearch(prompt);
+        //if we don't have any papers to rank against, then no reason to refine search
+        if(bestPaperRankings.length <= 0)
+        {
+            Controller_ApplyState(applicationStateSearchFail, "Nothing found!");
+            View_SetResultsText(
+            `No results were found! ` +
+            `This could be due to the following... ` +
+            `Your search prompt didn't indicate anything to actually search for. ` +
+            `Or your search prompt was too specific for something that doesn't exist. ` +
+            `Or potentially some application error occured. ` + 
+            `Try again by changing your response to be something different! `
+            );
+            console.log("no articles found after inital search rankings, skipping refinement...");
+            return; //don't continue, we didn't find any papers that matches the user search query unfortunately.
+        }
+        //if we don't have enough papers to rank against, no reason to waste resources/api request refining search results
+        //we already found 1 that matched the users query anyway so nothing further needs to be done!
+        else if(bestPaperRankings.length < 2)
+        {
+            Controller_ApplyState(applicationStateSearchSuccess, "Found article!");
+            View_SetResultsText(
+            `1 article was found that best matched your query!`
+            );
+            console.log("only 1 article found after inital search rankings, skipping refinement...");
+            return; //don't continue, pointless to refine search on only just 1 paper only
+        }
+        //otherwise, we have more than 1 paper that we found, so lets do an additonal search refinement step
+        else
+        {
+            View_SetResultsText(
+            `We found ${matchCount} best results that match your query. ` +
+            `If you wait a bit we will check these articles and order them by relevancy...`
+            );
+
+            //ask LLM to re-rank top results by relevancy
+            await Controller_RefinePaperSearch(prompt);
+        }
     }
     catch (error)
     {

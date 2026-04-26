@@ -70,9 +70,9 @@ const containerApplicationStatePanelClasses = [
 
 //google gemeni AI models
 //NOTE: if we hit rate limits just swap to a differnet one
-//const urlLLM = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const urlLLM = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 //const urlLLM = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
-const urlLLM = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+//const urlLLM = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
 
 //||||||||||||||||||| STATE GETTERS / SETTERS |||||||||||||||||||
 //||||||||||||||||||| STATE GETTERS / SETTERS |||||||||||||||||||
@@ -329,6 +329,21 @@ function CreatePaperRankElement(originalElementIndex)
 }
 
 //calculate the score for a paper rank based on the matches
+/*
+TODO / IDEAS:
+currently this basic scoring system is very leniant
+we can get a large amount of search results easily that are somewhat related
+but the problem is that even if the user prompt starts to specify things like year and URL
+theroetically those terms should make the search results much more strict, and exclude many other results
+
+I think we should try introducing additional score calculation strategies
+for example for terms where say we have a year match, but no keyword/title matches at all
+then we should return 0 for the score (essentially ignoring this paper)
+
+another example is for URL matches, arguably those are as specific as you can possibly get
+those should be ranked highest regardless of title/abstract/author matches. maybe overriding the score entirely to something super high
+and if there are no URL matches (but any other matches) then those should be ignored entirely and the score overriden to 0 (again essentially ignoring this paper)
+*/
 function CalculateScoreForPaperRanking(paperRank)
 {
     return (
