@@ -25,6 +25,7 @@ let bestPaperRankings = [];
 
 let llmIndex = 0; //start at 0
 let llms = [];
+let currentLLM_URL = '';
 
 //||||||||||||||||||| APPLICATION CONST VARIABLES |||||||||||||||||||
 //||||||||||||||||||| APPLICATION CONST VARIABLES |||||||||||||||||||
@@ -112,7 +113,6 @@ const urlLLMs = [
 //models/gemini-3-pro-preview
 
 //models/gemini-3.1-pro-preview-customtools
-
 //models/gemini-2.5-flash-preview-tts
 //models/gemini-2.5-pro-preview-tts
 //models/gemini-2.5-flash-image
@@ -217,6 +217,8 @@ async function Model_Setup(file, apiKey)
 
     const csvFileText = await file.text();
     ParseCSV(csvFileText);
+
+    InitalizeLLMs();
 
     setupComplete = true;
 
@@ -404,21 +406,6 @@ function CreatePaperRankElement(originalElementIndex)
 }
 
 //calculate the score for a paper rank based on the matches
-/*
-TODO / IDEAS:
-currently this basic scoring system is very leniant
-we can get a large amount of search results easily that are somewhat related
-but the problem is that even if the user prompt starts to specify things like year and URL
-theroetically those terms should make the search results much more strict, and exclude many other results
-
-I think we should try introducing additional score calculation strategies
-for example for terms where say we have a year match, but no keyword/title matches at all
-then we should return 0 for the score (essentially ignoring this paper)
-
-another example is for URL matches, arguably those are as specific as you can possibly get
-those should be ranked highest regardless of title/abstract/author matches. maybe overriding the score entirely to something super high
-and if there are no URL matches (but any other matches) then those should be ignored entirely and the score overriden to 0 (again essentially ignoring this paper)
-*/
 function CalculateScoreForPaperRanking(paperRank, responseKeywords, responseURLs, responseAuthors, responseYears)
 {
     //NOTE TO SELF: leave the if blocks as seperate, do not chain them together with else-if
@@ -819,7 +806,8 @@ async function Model_RequestLLM(llmPrompt)
     if (!setup_apiKey)
         throw new Error("Missing API key.");
 
-    const finalURL = `${urlLLM}?key=${setup_apiKey}`;
+    //const finalURL = `${urlLLM}?key=${setup_apiKey}`;
+    const finalURL = `${currentLLM_URL}?key=${setup_apiKey}`;
 
     const response = await fetch(finalURL, {
         method: "POST",
@@ -830,7 +818,14 @@ async function Model_RequestLLM(llmPrompt)
     });
 
     if (!response.ok)
+    {
+        //if(response.error.code === 503 || response.error.code === 404 || response.error.code === 429)
+        //{
+            SwapLLM();
+        //}
+
         throw new Error(`HTTP ${response.status}`);
+    }
 
     const data = await response.json();
 
@@ -890,7 +885,16 @@ function CreateLLM(llmURL)
         canUse: true
     };
 
-    llms.push(llmBucket);
+    llms.push(llm);
+}
+
+function InitalizeLLMs()
+{
+    ResetLLMsArray();
+    CreateLLMsArray();
+
+    llmIndex = 0;
+    currentLLM_URL = llms[0].url;
 }
 
 //NOTE: Google AI Studio Codes - https://ai.google.dev/gemini-api/docs/troubleshooting
@@ -901,7 +905,19 @@ function SwapLLM()
     //let llmIndex = 0; //start at 0
     //let llms = [];
     //each element in llms is defined as such...
-    
+
+    llmIndex++;
+
+    //clamp min
+    if(llmIndex < 0)
+        llmIndex = 0;
+
+    //clamp max (wrap behavior)
+    if(llmIndex >= llms.length)
+        llmIndex = 0;
+
+    currentLLM_URL = llms[llmIndex].url;
+    console.log('swapping LLM to: ' + llms[llmIndex].url);
 }
 
 function ResetLLMsArray()
