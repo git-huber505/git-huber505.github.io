@@ -69,6 +69,12 @@ async function Controller_OnSetupClicked()
 
     try
     {
+        //validate API key first!
+        const apiError = await Model_CheckLLM(apiKey);
+
+        if (apiError) 
+            throw new Error(apiError);
+
         Controller_ApplyState(applicationStateSetupCode, 'Reading CSV file...');
         const { count, filename } = await Model_Setup(file, apiKey);
         Controller_ApplyState(applicationStateIdleCode, `Setup complete! Loaded ${count} entries from ${filename}`);
@@ -101,8 +107,8 @@ async function Controller_OnSearchClicked()
     try
     {
         //ask LLM to extract keywords/URLs/authors/years
-        const initialPrompt = Model_ConstructInitialSearchPrompt(prompt);
-        const initialResult = await Model_RequestLLM(initialPrompt);
+        const initialPrompt = Model_ConstructInitialSearchPrompt(prompt); //this creates the prompt text
+        const initialResult = await Model_RequestLLM(initialPrompt); //this actually sends the constructed prompt text to the LLM
 
         Controller_ApplyState(applicationStateIdleCode, "Initial search complete.");
 
@@ -144,7 +150,7 @@ async function Controller_OnSearchClicked()
         else
         {
             View_SetResultsText(
-            `We found ${matchCount} best results that match your query. ` +
+            `Here are ${matchCount} articles we found that best match your search. ` +
             `If you wait a bit we will check these articles and order them by relevancy...`
             );
 
@@ -155,7 +161,7 @@ async function Controller_OnSearchClicked()
     catch (error)
     {
         console.error(error);
-        Controller_ApplyState(applicationStateErrorCode, `Initial search failed! ${error.message}`);
+        Controller_ApplyState(applicationStateErrorCode, `Initial search failed! (You could retry the search again) ${error.message}`);
     }
 }
 
@@ -178,7 +184,7 @@ async function Controller_RefinePaperSearch(userPrompt)
 
         View_SetResultsText(
         `We found ${sortedPapers.length} best results that match your query. ` +
-        `Ranked in order of relevancy (highest to lowest).`
+        `Ranked in order of relevancy (from highest to lowest).`
         );
 
         View_RenderResultCards(sortedPapers);
@@ -191,12 +197,12 @@ async function Controller_RefinePaperSearch(userPrompt)
     catch (error)
     {
         console.error(error);
-        Controller_ApplyState(applicationStateIdleCode, `Refinement failed, falling back to score order. Reason: ${error.message}`);
+        Controller_ApplyState(applicationStateIdleCode, `Refinement failed, falling back to score order. (You can retry the search again) Reason: ${error.message}`);
     }
 }
 
 //||||||||||||||||||| WEBSITE START |||||||||||||||||||
-//||||||||||||||||||| WEBSITE STAR |||||||||||||||||||
-//||||||||||||||||||| WEBSITE STAR |||||||||||||||||||
+//||||||||||||||||||| WEBSITE START |||||||||||||||||||
+//||||||||||||||||||| WEBSITE START |||||||||||||||||||
 
 Controller_ApplyState(applicationStateSetupCode, 'Setup application...');
