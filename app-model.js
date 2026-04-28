@@ -500,6 +500,8 @@ function Model_FilterPaperSearch(llmResponse)
     ResetPaperRankings();
     CreatePaperRankingArray();
 
+    console.log(llmResponse);
+
     //============== keywords ==============
     //parse llmResponse text to get responseKeywords
     //expected formats...
@@ -655,6 +657,7 @@ function Model_ConstructInitialSearchPrompt(userPrompt)
     let finalPrompt = '';
     finalPrompt += 'given this users response "' + userPrompt + '" ';
     finalPrompt += 'please do your best to extract relevant keywords, URLs, authors, years to search a conference database. ';
+    finalPrompt += 'also based on your understanding of the user prompt, add new and appropriate synonyms/keywords that best match the users intentions to get the best search results. ';
     finalPrompt += 'your response MUST be in the following format... ';
     finalPrompt += 'Keywords: [write relevant keywords word by word here] \n';
     finalPrompt += 'URLs: [write URLs here if specified] \n';
@@ -689,7 +692,7 @@ function Model_ConstructRefinementSearchPrompt(userPrompt, results)
     }
 
     finalPrompt += 'task:\n';
-    finalPrompt += 'sort these papers by relevance to the user query.\n';
+    finalPrompt += 'to the best of your ability, sort these papers by relevance to the users original search query.\n';
     finalPrompt += 'return ONLY a comma-separated list of OriginalArrayIndex values.\n';
     finalPrompt += 'do NOT include explanations, text, or formatting.\n\n';
     finalPrompt += 'example:\n';
