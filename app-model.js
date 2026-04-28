@@ -23,6 +23,9 @@ let originalPapers = [];
 let paperRankings = [];
 let bestPaperRankings = [];
 
+let llmIndex = 0; //start at 0
+let llms = [];
+
 //||||||||||||||||||| APPLICATION CONST VARIABLES |||||||||||||||||||
 //||||||||||||||||||| APPLICATION CONST VARIABLES |||||||||||||||||||
 //||||||||||||||||||| APPLICATION CONST VARIABLES |||||||||||||||||||
@@ -69,10 +72,82 @@ const containerApplicationStatePanelClasses = [
 ];
 
 //google gemeni AI models
+const urlValidateLLMs = "https://generativelanguage.googleapis.com/v1beta/models"
+
 //NOTE: if we hit rate limits just swap to a differnet one
-const urlLLM = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
-//const urlLLM = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
-//const urlLLM = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+//const urlLLM = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const urlLLM = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+
+const urlLLMs = [
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite-001:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent'
+];
+
+//text specific
+//models/gemini-2.5-flash
+//models/gemini-3-flash-preview
+//models/gemini-2.5-pro
+//models/gemini-2.0-flash
+//models/gemini-2.0-flash-lite
+//models/gemini-3.1-flash-lite-preview
+//models/gemini-3.1-pro-preview
+//models/gemini-2.5-flash-lite
+//models/gemini-2.0-flash-001
+//models/gemini-2.0-flash-lite-001
+//models/gemini-flash-latest
+//models/gemini-flash-lite-latest
+//models/gemini-pro-latest
+//models/gemini-3-pro-preview
+
+//models/gemini-3.1-pro-preview-customtools
+
+//models/gemini-2.5-flash-preview-tts
+//models/gemini-2.5-pro-preview-tts
+//models/gemini-2.5-flash-image
+//models/gemini-3-pro-image-preview
+//models/gemini-3.1-flash-image-preview
+//models/gemma-3-1b-it
+//models/gemma-3-4b-it
+//models/gemma-3-12b-it
+//models/gemma-3-27b-it
+//models/gemma-3n-e4b-it
+//models/gemma-3n-e2b-it
+//models/gemma-4-26b-a4b-it
+//models/gemma-4-31b-it
+//models/nano-banana-pro-preview
+//models/lyria-3-clip-preview
+//models/lyria-3-pro-preview
+//models/gemini-3.1-flash-tts-preview
+//models/gemini-robotics-er-1.5-preview
+//models/gemini-robotics-er-1.6-preview
+//models/gemini-2.5-computer-use-preview-10-2025
+//models/deep-research-max-preview-04-2026
+//models/deep-research-preview-04-2026
+//models/deep-research-pro-preview-12-2025
+//models/gemini-embedding-001
+//models/gemini-embedding-2-preview
+//models/gemini-embedding-2
+//models/aqa
+//models/imagen-4.0-generate-001
+//models/imagen-4.0-ultra-generate-001
+//models/imagen-4.0-fast-generate-001
+//models/veo-2.0-generate-001
+//models/veo-3.0-generate-001
+//models/veo-3.0-fast-generate-001
+//models/veo-3.1-generate-preview
+//models/veo-3.1-fast-generate-preview
 
 //||||||||||||||||||| STATE GETTERS / SETTERS |||||||||||||||||||
 //||||||||||||||||||| STATE GETTERS / SETTERS |||||||||||||||||||
@@ -344,8 +419,24 @@ another example is for URL matches, arguably those are as specific as you can po
 those should be ranked highest regardless of title/abstract/author matches. maybe overriding the score entirely to something super high
 and if there are no URL matches (but any other matches) then those should be ignored entirely and the score overriden to 0 (again essentially ignoring this paper)
 */
-function CalculateScoreForPaperRanking(paperRank)
+function CalculateScoreForPaperRanking(paperRank, responseKeywords, responseURLs, responseAuthors, responseYears)
 {
+    //NOTE TO SELF: leave the if blocks as seperate, do not chain them together with else-if
+    //this is because we only care about each term in isolation (so only in the case if it's specified do we do something)
+
+    //if there are URLs specified... and if the paper rank does not have a URL match, then overide the score to be 0.
+    if(responseURLs && paperRank.urlMatches <= 0)
+        return 0; //return 0 because this paper does not matter (this also means the paper gets pruned later)
+
+    //if there are Authors specified... and if the paper rank does not have an author match of any kind, then overide the score to be 0.
+    if(responseAuthors && paperRank.authorMatches <= 0)
+        return 0; //return 0 because this paper does not matter (this also means the paper gets pruned later)
+
+    //if there are Years specified... and if paper rank does not have a year match of any kind, then overide the score to be 0.
+    if(responseYears && paperRank.yearMatches <= 0)
+        return 0; //return 0 because this paper does not matter (this also means the paper gets pruned later)
+
+    //calculate the final score based on the amount of hits we get
     return (
         paperRank.titleMatches    * filterTitleWeight    +
         paperRank.abstractMatches * filterAbstractWeight +
@@ -368,7 +459,7 @@ function ResetPaperRankings()
 
 //given keywords (if there are any)
 //go through the paper rankings to find out how many keyword matches there are
-function RankPapersByKeywords(keywords = null)
+function RankPapersByKeywords(keywords)
 {
   if (!keywords || keywords.length === 0) //saftey check: make sure we have keywords to work with!
     return; //if not then do nothing!
@@ -377,18 +468,19 @@ function RankPapersByKeywords(keywords = null)
 
     for (let i = 0; i < paperRankings.length; i++)
     {
-        const paperRank = paperRankings[i];
-        const paper     = originalPapers[paperRank.originalPaperIndex];
-        const title     = HelperCleanupText(paper.title);
-        const abstract  = HelperCleanupText(paper.abstract);
+        const paperRank      = paperRankings[i];
+        const paper          = originalPapers[paperRank.originalPaperIndex];
+        const paperTitle     = HelperCleanupText(paper.title);
+        const paperAbstract  = HelperCleanupText(paper.abstract);
 
         for (let k = 0; k < normalizedKeywords.length; k++)
         {
             const keyword = normalizedKeywords[k];
-            if (title.includes(keyword))    
+
+            if (paperTitle.includes(keyword))    
                 paperRank.titleMatches++;
 
-            if (abstract.includes(keyword)) 
+            if (paperAbstract.includes(keyword)) 
                 paperRank.abstractMatches++;
         }
     }
@@ -396,7 +488,7 @@ function RankPapersByKeywords(keywords = null)
 
 //given urls (if there are any)
 //go through the paper rankings to find out how many url matches there are
-function RankPapersByURLs(urls = null)
+function RankPapersByURLs(urls)
 {
     if (!urls || urls.length === 0) //saftey check: make sure we have urls to work with!
         return; //if not then do nothing!
@@ -404,11 +496,14 @@ function RankPapersByURLs(urls = null)
     for (let i = 0; i < paperRankings.length; i++)
     {
         const paperRank = paperRankings[i];
-        const url       = originalPapers[paperRank.originalPaperIndex].url;
+        const paper     = originalPapers[paperRank.originalPaperIndex];
+        const paperUrl  = paper.url;
 
         for (let k = 0; k < urls.length; k++)
         {
-            if (url.includes(urls[k])) 
+            const url = urls[k];
+
+            if (paperUrl.includes(url)) 
                 paperRank.urlMatches++;
         }
     } 
@@ -416,21 +511,24 @@ function RankPapersByURLs(urls = null)
 
 //given authors (if there are any)
 //go through the paper rankings to find out how many author matches there are
-function RankPapersByAuthors(authors = null)
+function RankPapersByAuthors(authors)
 {
   if (!authors || authors.length === 0) //saftey check: make sure we have authors to work with!
     return; //if not then do nothing!
 
-    const normalizedKeywords = authors.map(k => HelperCleanupText(k));
+    const normalizedAuthors = authors.map(k => HelperCleanupText(k));
 
     for (let i = 0; i < paperRankings.length; i++)
     {
         const paperRank    = paperRankings[i];
-        const paperAuthors = HelperCleanupText(originalPapers[paperRank.originalPaperIndex].authors);
+        const paper        = originalPapers[paperRank.originalPaperIndex];
+        const paperAuthors = HelperCleanupText(paper.authors);
 
-        for (let k = 0; k < normalizedKeywords.length; k++)
+        for (let k = 0; k < normalizedAuthors.length; k++)
         {
-            if (paperAuthors.includes(normalizedKeywords[k])) 
+            const author = normalizedAuthors[k];
+
+            if (paperAuthors.includes(author)) 
                 paperRank.authorMatches++;
         }
     }
@@ -438,7 +536,7 @@ function RankPapersByAuthors(authors = null)
 
 //given years (if there are any)
 //go through the paper rankings to find out how many year matches there are
-function RankPapersByYears(years = null)
+function RankPapersByYears(years)
 {
     if (!years || years.length === 0) //saftey check: make sure we have years to work with!
         return; //if not then do nothing!
@@ -446,11 +544,14 @@ function RankPapersByYears(years = null)
     for (let i = 0; i < paperRankings.length; i++)
     {
         const paperRank = paperRankings[i];
-        const year      = originalPapers[paperRank.originalPaperIndex].year;
+        const paper     = originalPapers[paperRank.originalPaperIndex];
+        const paperYear = paper.year;
 
         for (let k = 0; k < years.length; k++)
         {
-            if (year.includes(years[k])) 
+            const year = years[k];
+
+            if (paperYear.includes(year)) 
                 paperRank.yearMatches++;
         }
     }
@@ -458,14 +559,14 @@ function RankPapersByYears(years = null)
 
 //go through our paper rankings and completely remove elements that have a score of 0
 //no reason to keep them around if they don't match the search query
-function PrunePaperRankings()
+function ScoreAndPrunePaperRankings(responseKeywords, responseURLs, responseAuthors, responseYears)
 {
     const simplified = [];
 
     for (let i = 0; i < paperRankings.length; i++)
     {
         const paperRank = paperRankings[i];
-        paperRank.score = CalculateScoreForPaperRanking(paperRank);
+        paperRank.score = CalculateScoreForPaperRanking(paperRank, responseKeywords, responseURLs, responseAuthors, responseYears);
 
         //only meaningful results matter!
         if (paperRank.score > 0) 
@@ -499,8 +600,6 @@ function Model_FilterPaperSearch(llmResponse)
 {
     ResetPaperRankings();
     CreatePaperRankingArray();
-
-    console.log(llmResponse);
 
     //============== keywords ==============
     //parse llmResponse text to get responseKeywords
@@ -575,6 +674,12 @@ function Model_FilterPaperSearch(llmResponse)
         .filter(y => /^\d+$/.test(y));
     }
 
+    console.log("Inital Search Results");
+    console.log('Keywords: ' + responseKeywords);
+    console.log('URLs: ' + responseURLs);
+    console.log('Authors: ' + responseAuthors);
+    console.log('Years: ' + responseYears);
+
     //after collecting all of the relevant search data (if it was specified by the user and extracted by the llm)
     //now go through and collect matches for each of the paper ranks so we can calculate a score later
     RankPapersByKeywords(responseKeywords);
@@ -584,7 +689,7 @@ function Model_FilterPaperSearch(llmResponse)
 
     //after collecting matches, this will calculate the paper score
     //now if the resulting paper score is 0 it will be removed entirely from paperRankings array
-    PrunePaperRankings();
+    ScoreAndPrunePaperRankings(responseKeywords, responseURLs, responseAuthors, responseYears);
 
     //sort by highest score
     SortPaperRankingsByScore();
@@ -668,7 +773,9 @@ function Model_ConstructInitialSearchPrompt(userPrompt)
     finalPrompt += 'URLs: None \n';
     finalPrompt += 'Authors: None \n';
     finalPrompt += 'Years: None \n';
-    finalPrompt += 'if nothing is specified, just write None on each of the fields';
+    finalPrompt += 'if nothing is specified, just write None on each of the fields. ';
+    finalPrompt += 'if the user specifies a year range like 2006 to 2010 then make sure you list each year within the range. ';
+    finalPrompt += 'if the user specifies a URL, please just include it in the URLs field, do NOT attempt to open it or try to extract more information from it. ';
     return finalPrompt;
 }
 
@@ -728,6 +835,78 @@ async function Model_RequestLLM(llmPrompt)
     const data = await response.json();
 
     return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response from model.";
+}
+
+async function Model_CheckLLM(apiKey)
+{
+    try 
+    {
+        const response = await fetch(urlValidateLLMs, {
+            method: "GET",
+            headers: {
+                "x-goog-api-key": apiKey
+            }
+        });
+
+        // Try to parse JSON (even for error responses)
+        const data = await response.json();
+
+        //if API returns error object
+        if (data.error) 
+        {
+            console.error(data.error.message);
+            return "Error trying to check LLM! This can happen if you haven't given an API key, or it's invalid. Make sure it is valid! (check console for details) ";
+        }
+
+        //if HTTP status itself failed but no structured error
+        if (!response.ok) 
+        {
+            return `HTTP error: ${response.status}`;
+        }
+
+        //success, so return nothing!
+        return null;
+
+    } 
+    catch (error) 
+    {
+        //network or other kinds of errors
+        return `Request failed: ${error.message}`;
+    }
+}
+
+function CreateLLMsArray()
+{
+    for (let i = 0; i < urlLLMs.length; i++)
+    {
+        CreateLLM(urlLLMs[i]);
+    }
+}
+
+function CreateLLM(llmURL)
+{
+    const llm = {
+        url: llmURL,
+        canUse: true
+    };
+
+    llms.push(llmBucket);
+}
+
+//NOTE: Google AI Studio Codes - https://ai.google.dev/gemini-api/docs/troubleshooting
+//503 = Service Unavaiable (due to high demand, or more likely hitting a rate limit)
+//NOTE: this will only gets called if there was an error validating the LLM
+function SwapLLM()
+{
+    //let llmIndex = 0; //start at 0
+    //let llms = [];
+    //each element in llms is defined as such...
+    
+}
+
+function ResetLLMsArray()
+{
+    llms = [];
 }
 
 //||||||||||||||||||| HELPERS |||||||||||||||||||
